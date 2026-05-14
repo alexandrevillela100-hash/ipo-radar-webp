@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import IPOCard from "@/components/IPOCard";
+import LiveFilingsStrip from "@/components/LiveFilingsStrip";
 import { ipoCompanies, marketStats as mockStats } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,17 +26,12 @@ import { useLocation, Link } from "wouter";
  * - Deep charcoal base, slate card surfaces
  * - Teal primary accent, muted gold highlights
  *
- * Path A static-deploy build:
- * - tRPC backend calls have been REMOVED (no backend in this build)
- * - "Sync with SEC" admin bar removed (admin-only feature, requires backend)
- * - Market stats use mock numbers from @/lib/data
- * - "Upcoming IPOs" + "Recent IPOs" sections fall back to mock data
- *   (ipoCompanies array from @/lib/data)
- * - All CTAs that need backend (Get Started, Create Account) show a
- *   "Backend coming soon" toast
- * - "Request Sample Report" routes to the live in-house report at /reports/psus
- *
- * When Path B (full backend) ships, restore from the Manus original.
+ * Path A static-deploy build, with LIVE FILINGS STRIP integration:
+ * - tRPC backend calls remain removed (no Express backend in this build)
+ * - <LiveFilingsStrip /> now pulls the 8 most recent filings directly
+ *   from Sanity (the same dataset the calendar app uses), shown
+ *   between the trust bar and the (mock) Market Snapshot Strip
+ * - Other mock-data sections remain as placeholders until backend ships
  */
 
 /* ─── FAQ Accordion Item ─────────────────────────────────────────────── */
@@ -94,10 +90,8 @@ function FAQItem({
   );
 }
 
-/* ─── Helpers for the Path A static build ─────────────────────────────── */
+/* ─── Helpers ────────────────────────────────────────────────────────── */
 
-// In Path B (with backend), this routes to the auth-gated app. Until then,
-// it surfaces a "coming soon" toast so visitors know it's intentional.
 function comingSoon(label: string) {
   toast("Backend coming soon", {
     description: `${label} will be available when the auth layer ships. Preview build only.`,
@@ -152,8 +146,6 @@ export default function Home() {
                 size="lg"
                 variant="outline"
                 onClick={() => {
-                  // Live demo: open the in-house Initiation Report for PSUS.
-                  // Update this to whichever ticker you want as the showcase.
                   window.open("https://ipo-radar-calendar-app.vercel.app/reports/psus", "_blank");
                 }}
                 className="border-border/60 text-foreground hover:bg-secondary font-semibold text-base px-6"
@@ -185,7 +177,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Market Snapshot Strip — MOCK DATA in this preview build */}
+      {/* ── LIVE FILINGS STRIP — REAL data from Sanity ─────────────────── */}
+      <LiveFilingsStrip />
+
+      {/* Market Snapshot Strip — still mock data for now */}
       <section className="py-10">
         <div className="container">
           <div className="flex items-center gap-2 mb-6">
@@ -284,34 +279,10 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              {
-                step: "01",
-                title: "Detect",
-                description:
-                  "Monitor new SEC IPO-related filings (S-1, F-1) in real time with automated polling.",
-                icon: Radar,
-              },
-              {
-                step: "02",
-                title: "Structure",
-                description:
-                  "Extract issuer, offering, financial, and risk data into a usable structured schema.",
-                icon: FileSearch,
-              },
-              {
-                step: "03",
-                title: "Compare",
-                description:
-                  "Identify what changed across amendments with side-by-side diff analysis.",
-                icon: GitCompare,
-              },
-              {
-                step: "04",
-                title: "Deliver",
-                description:
-                  "Generate first-look reports, alerts, dashboards, and filing timelines automatically.",
-                icon: Bell,
-              },
+              { step: "01", title: "Detect", description: "Monitor new SEC IPO-related filings (S-1, F-1) in real time with automated polling.", icon: Radar },
+              { step: "02", title: "Structure", description: "Extract issuer, offering, financial, and risk data into a usable structured schema.", icon: FileSearch },
+              { step: "03", title: "Compare", description: "Identify what changed across amendments with side-by-side diff analysis.", icon: GitCompare },
+              { step: "04", title: "Deliver", description: "Generate first-look reports, alerts, dashboards, and filing timelines automatically.", icon: Bell },
             ].map((item) => (
               <div
                 key={item.step}
@@ -349,42 +320,12 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              {
-                title: "SEC Filing Monitor",
-                description:
-                  "Real-time monitoring of S-1, S-1/A, F-1, and F-1/A filings from SEC EDGAR with automated classification.",
-                icon: Radar,
-              },
-              {
-                title: "Amendment Diff Engine",
-                description:
-                  "Side-by-side comparison of filing versions highlighting material changes in pricing, financials, and risk factors.",
-                icon: GitCompare,
-              },
-              {
-                title: "AI First-Look Reports",
-                description:
-                  "Institutional-quality initiation reports generated automatically from structured filing data.",
-                icon: FileSearch,
-              },
-              {
-                title: "IPO Calendar Intelligence",
-                description:
-                  "Track filing timelines, expected pricing dates, and market windows with predictive signals.",
-                icon: BarChart3,
-              },
-              {
-                title: "Company Profiles",
-                description:
-                  "Comprehensive issuer pages with business overview, financials, offering details, and risk analysis.",
-                icon: Shield,
-              },
-              {
-                title: "Alerts & Watchlists",
-                description:
-                  "Custom watchlists with real-time alerts for new filings, amendments, and material changes.",
-                icon: Bell,
-              },
+              { title: "SEC Filing Monitor", description: "Real-time monitoring of S-1, S-1/A, F-1, and F-1/A filings from SEC EDGAR with automated classification.", icon: Radar },
+              { title: "Amendment Diff Engine", description: "Side-by-side comparison of filing versions highlighting material changes in pricing, financials, and risk factors.", icon: GitCompare },
+              { title: "AI First-Look Reports", description: "Institutional-quality initiation reports generated automatically from structured filing data.", icon: FileSearch },
+              { title: "IPO Calendar Intelligence", description: "Track filing timelines, expected pricing dates, and market windows with predictive signals.", icon: BarChart3 },
+              { title: "Company Profiles", description: "Comprehensive issuer pages with business overview, financials, offering details, and risk analysis.", icon: Shield },
+              { title: "Alerts & Watchlists", description: "Custom watchlists with real-time alerts for new filings, amendments, and material changes.", icon: Bell },
             ].map((feature) => (
               <div
                 key={feature.title}
@@ -413,11 +354,9 @@ export default function Home() {
               Why We're Different
             </h2>
             <p className="text-muted-foreground mt-3 text-lg leading-relaxed">
-              Traditional IPO sites give you calendars, listings, and news. IPO Radar AI
-              gives you{" "}
+              Traditional IPO sites give you calendars, listings, and news. IPO Radar AI gives you{" "}
               <span className="text-primary font-semibold">
-                filing ingestion, structured extraction, amendment analysis,
-                AI-generated reports, and workflow alerts
+                filing ingestion, structured extraction, amendment analysis, AI-generated reports, and workflow alerts
               </span>
               — all from the primary source.
             </p>
@@ -436,10 +375,7 @@ export default function Home() {
                   "Manual research required",
                   "No filing analysis",
                 ].map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
+                  <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
                     {item}
                   </li>
@@ -458,10 +394,7 @@ export default function Home() {
                   "AI-generated first-look reports",
                   "Real-time workflow alerts",
                 ].map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-foreground"
-                  >
+                  <li key={item} className="flex items-center gap-2 text-sm text-foreground">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                     {item}
                   </li>
@@ -508,34 +441,13 @@ export default function Home() {
             </h2>
             <div className="space-y-0">
               {[
-                {
-                  q: "What is IPO Radar AI and how does it work?",
-                  a: "IPO Radar AI is an intelligence platform that monitors SEC EDGAR for S-1 and F-1 filings in near real-time. When a new IPO registration is detected, the system extracts structured financial data from the filing and generates an institutional-grade initiation report using AI. Every figure in the report comes directly from the SEC filing — nothing is estimated or inferred."
-                },
-                {
-                  q: "Where does the financial data come from?",
-                  a: "All financial data is sourced exclusively from SEC EDGAR — the official public repository of Securities and Exchange Commission filings. IPO Radar connects to the EDGAR EFTS (full-text search) and Submissions APIs to retrieve filings, company metadata, and XBRL financial data. The AI never fabricates financial figures; it only narrates and analyzes data that has been verified against the original filing."
-                },
-                {
-                  q: "What types of SEC filings does IPO Radar track?",
-                  a: "The platform tracks four filing types: S-1 (initial domestic IPO registration), S-1/A (amendments to domestic filings), F-1 (initial foreign private issuer registration), and F-1/A (amendments to foreign filings). This covers the full lifecycle of an IPO from initial registration through pricing, including every material amendment along the way."
-                },
-                {
-                  q: "How are the AI initiation reports generated?",
-                  a: "Reports follow a four-stage pipeline. First, the system collects raw filing data from SEC EDGAR. Second, it structures the data into a standardized package — financials, risk factors, use of proceeds, and business overview. Third, the LLM generates a section-by-section narrative using only the structured data as input. Finally, the system assembles the complete report with proper formatting and citations. The LLM is explicitly constrained to never invent financial data."
-                },
-                {
-                  q: "Do I need a paid plan to use IPO Radar?",
-                  a: "No. The Free tier gives you access to the IPO calendar, basic company profiles, and sector browsing. The Pro plan at $49 per month unlocks full AI-generated initiation reports, real-time filing alerts, watchlist functionality, amendment diff analysis, and priority data access. Enterprise pricing is available for teams that need API access, custom integrations, and dedicated support."
-                },
-                {
-                  q: "How quickly are new filings detected?",
-                  a: "IPO Radar monitors the SEC EDGAR EFTS API for new filings on a continuous basis. In practice, new S-1 and F-1 filings typically appear in the platform within minutes of being published on EDGAR. Amendment filings (S-1/A, F-1/A) are detected on the same schedule, and users with alerts enabled receive notifications as soon as a new filing is processed."
-                },
-                {
-                  q: "Can I track specific companies or sectors?",
-                  a: "Yes. The watchlist feature lets you follow specific companies and receive alerts when they file new documents or amend existing registrations. You can also browse by sector — the platform maps every company's SIC code to a human-readable sector classification. Custom alert rules let you filter by filing type, sector, or specific company, so you only see what matters to your workflow."
-                },
+                { q: "What is IPO Radar AI and how does it work?", a: "IPO Radar AI is an intelligence platform that monitors SEC EDGAR for S-1 and F-1 filings in near real-time. When a new IPO registration is detected, the system extracts structured financial data from the filing and generates an institutional-grade initiation report using AI. Every figure in the report comes directly from the SEC filing — nothing is estimated or inferred." },
+                { q: "Where does the financial data come from?", a: "All financial data is sourced exclusively from SEC EDGAR — the official public repository of Securities and Exchange Commission filings. IPO Radar connects to the EDGAR EFTS (full-text search) and Submissions APIs to retrieve filings, company metadata, and XBRL financial data. The AI never fabricates financial figures; it only narrates and analyzes data that has been verified against the original filing." },
+                { q: "What types of SEC filings does IPO Radar track?", a: "The platform tracks four filing types: S-1 (initial domestic IPO registration), S-1/A (amendments to domestic filings), F-1 (initial foreign private issuer registration), and F-1/A (amendments to foreign filings). This covers the full lifecycle of an IPO from initial registration through pricing, including every material amendment along the way." },
+                { q: "How are the AI initiation reports generated?", a: "Reports follow a four-stage pipeline. First, the system collects raw filing data from SEC EDGAR. Second, it structures the data into a standardized package — financials, risk factors, use of proceeds, and business overview. Third, the LLM generates a section-by-section narrative using only the structured data as input. Finally, the system assembles the complete report with proper formatting and citations. The LLM is explicitly constrained to never invent financial data." },
+                { q: "Do I need a paid plan to use IPO Radar?", a: "No. The Free tier gives you access to the IPO calendar, basic company profiles, and sector browsing. The Pro plan at $49 per month unlocks full AI-generated initiation reports, real-time filing alerts, watchlist functionality, amendment diff analysis, and priority data access. Enterprise pricing is available for teams that need API access, custom integrations, and dedicated support." },
+                { q: "How quickly are new filings detected?", a: "IPO Radar monitors the SEC EDGAR EFTS API for new filings on a continuous basis. In practice, new S-1 and F-1 filings typically appear in the platform within minutes of being published on EDGAR. Amendment filings (S-1/A, F-1/A) are detected on the same schedule, and users with alerts enabled receive notifications as soon as a new filing is processed." },
+                { q: "Can I track specific companies or sectors?", a: "Yes. The watchlist feature lets you follow specific companies and receive alerts when they file new documents or amend existing registrations. You can also browse by sector — the platform maps every company's SIC code to a human-readable sector classification. Custom alert rules let you filter by filing type, sector, or specific company, so you only see what matters to your workflow." },
               ].map((item, index) => (
                 <FAQItem
                   key={index}
@@ -616,14 +528,8 @@ export default function Home() {
       {/* Global animation keyframes */}
       <style>{`
         @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
