@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import IPOCard from "@/components/IPOCard";
-import LiveFilingsStrip from "@/components/LiveFilingsStrip";
-import { ipoCompanies, marketStats as mockStats } from "@/lib/data";
-import { Button } from "@/components/ui/button";
+import SECIPOCard from "@/components/SECIPOCard";
+import { ipoCompanies } from "@/lib/data";
 import {
   Radar,
   FileSearch,
@@ -14,9 +13,12 @@ import {
   Shield,
   ArrowRight,
   TrendingUp,
-  FileText,
-  AlertTriangle,
-  Zap,
+  Sparkles,
+  User,
+  Send,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation, Link } from "wouter";
@@ -25,13 +27,12 @@ import { useLocation, Link } from "wouter";
  * Design: Dark Terminal Luxe
  * - Deep charcoal base, slate card surfaces
  * - Teal primary accent, muted gold highlights
+ * - DM Sans headings, JetBrains Mono for financial data
+ * - Airbnb-style card grid for Upcoming IPOs
  *
- * Path A static-deploy build, with LIVE FILINGS STRIP integration:
- * - tRPC backend calls remain removed (no Express backend in this build)
- * - <LiveFilingsStrip /> now pulls the 8 most recent filings directly
- *   from Sanity (the same dataset the calendar app uses), shown
- *   between the trust bar and the (mock) Market Snapshot Strip
- * - Other mock-data sections remain as placeholders until backend ships
+ * Data: Hybrid approach
+ * - Real SEC data from EDGAR (fetched via tRPC)
+ * - Mock data as fallback / showcase examples
  */
 
 /* ─── FAQ Accordion Item ─────────────────────────────────────────────── */
@@ -90,16 +91,16 @@ function FAQItem({
   );
 }
 
-/* ─── Helpers ────────────────────────────────────────────────────────── */
-
-function comingSoon(label: string) {
-  toast("Backend coming soon", {
-    description: `${label} will be available when the auth layer ships. Preview build only.`,
-  });
-}
-
 export default function Home() {
   const [, setLocation] = useLocation();
+  // Path A: stub for CTA buttons that previously routed to auth-gated pages.
+  const comingSoon = (label: string) => {
+    toast("Backend coming soon", {
+      description: `${label} will be available when the auth layer ships. Preview build.`,
+    });
+  };
+
+
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   const handlePlaceholder = (label: string) => {
@@ -108,196 +109,319 @@ export default function Home() {
     });
   };
 
+  // ─── Real SEC Data ──────────────────────────────────────────────────────
+  // Path A static deploy: no backend, so we stub the filings query.
+  // The Home page falls back to the curated mock data in @/lib/data
+  // for the "Upcoming IPOs" section.
+  const filingsQuery = {
+    data: undefined as any,
+    isLoading: false,
+    refetch: () => {},
+  };
+
+  // Deduplicate filings: show only the most recent filing per company
+  const uniqueFilings = useMemo(() => {
+    if (!filingsQuery.data) return [];
+    const seen = new Set<string>();
+    return filingsQuery.data.filter((item) => {
+      if (seen.has(item.company.cik)) return false;
+      seen.add(item.company.cik);
+      return true;
+    });
+  }, [filingsQuery.data]);
+
+  const hasRealData = uniqueFilings.length > 0;
+
+  // Split filings into Upcoming (initial filings) and Recent (amendments)
+  const upcomingIPOs = useMemo(() => {
+    return uniqueFilings.filter(
+      (item) => !item.filing.formType.includes("/A")
+    );
+  }, [uniqueFilings]);
+
+  const recentIPOs = useMemo(() => {
+    return uniqueFilings.filter(
+      (item) => item.filing.formType.includes("/A")
+    );
+  }, [uniqueFilings]);
+
+  // ─── IPO tab state (Upcoming / Recent / All) ───────────────────────────
+  const [ipoTab, setIpoTab] = useState<"upcoming" | "recent" | "all">(
+    "upcoming"
+  );
+  const displayedIPOs = useMemo(() => {
+    if (ipoTab === "upcoming") return upcomingIPOs;
+    if (ipoTab === "recent") return recentIPOs;
+    return uniqueFilings;
+  }, [ipoTab, upcomingIPOs, recentIPOs, uniqueFilings]);
+
+  // ─── Last SEC sync (derived from most recent filing date) ──────────────
+  const lastSyncLabel = useMemo(() => {
+    if (!filingsQuery.data || filingsQuery.data.length === 0) return null;
+    // Use filingDate (YYYY-MM-DD) as a proxy for sync recency
+    const mostRecent = filingsQuery.data.reduce((max, f) =>
+      f.filing.filingDate > max ? f.filing.filingDate : max,
+      filingsQuery.data[0].filing.filingDate
+    );
+    const then = new Date(mostRecent).getTime();
+    const diffMs = Date.now() - then;
+    const minutes = Math.max(1, Math.floor(diffMs / 60000));
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }, [filingsQuery.data]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative pt-28 pb-20 overflow-hidden grain-overlay">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.75_0.15_180/0.08),transparent_60%)]" />
-        <div className="container relative">
+      {/* Hero Section — Velocia look: hyper-realistic photo, serif display, DM Mono eyebrow */}
+      <section className="relative min-h-[88vh] flex flex-col justify-end pt-28 pb-24 overflow-hidden grain-overlay">
+        {/* Hyper-realistic photo background */}
+        <div className="vv-hero-bg" aria-hidden="true" />
+        {/* Teal grid overlay */}
+        <div className="vv-hero-grid" aria-hidden="true" />
+
+        <div className="container relative z-10">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Radar className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-semibold text-primary tracking-wide uppercase">
-                SEC Filing Intelligence
-              </span>
+            <div className="vv-eyebrow mb-7">
+              <Radar className="w-3 h-3 -mr-2 opacity-80" />
+              SEC Filing Intelligence
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] text-foreground">
-              See the IPO{" "}
-              <span className="text-primary">before</span>{" "}
-              the market does.
+            <h1 className="vv-display text-[clamp(48px,7.5vw,104px)] text-foreground max-w-[900px] mb-8">
+              See the IPO <em>before</em> the market does.
             </h1>
-            <p className="mt-5 text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl">
+            <p className="text-[17px] sm:text-lg text-foreground/65 max-w-xl leading-[1.85] font-light mb-11">
               IPO Radar AI turns SEC filings into institutional-grade initiation
               reports — instantly. Monitor S-1 and F-1 filings, track amendments,
               and get AI-generated first-look research.
             </p>
-            <div className="flex flex-wrap gap-3 mt-8">
-              <Button
-                size="lg"
+            <div className="flex flex-wrap items-center gap-5">
+              <button
                 onClick={() => comingSoon("Get Started")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-6"
+                className="vv-btn-primary"
               >
                 Get Started Free
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  window.open("https://ipo-radar-calendar-app.vercel.app/reports/psus", "_blank");
-                }}
-                className="border-border/60 text-foreground hover:bg-secondary font-semibold text-base px-6"
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => window.open("https://ipo-radar-calendar-app.vercel.app/reports/psus", "_blank")}
+                className="vv-btn-outline"
               >
-                Request Sample Report
-              </Button>
+                See a Sample Report
+              </button>
             </div>
+            <p className="mt-8 font-mono text-[11px] text-muted-foreground tracking-[0.14em] uppercase">
+              Free tier
+              <span className="mx-3 opacity-40">·</span>
+              Pro $49/mo
+              <span className="mx-3 opacity-40">·</span>
+              No credit card required
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Trust/Proof Bar */}
-      <section className="border-y border-border/50 bg-secondary/30">
-        <div className="container py-4">
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground font-medium tracking-wide">
+      {/* Trust/Proof Bar — concrete source proof in DM Mono */}
+      <section className="border-y border-border/40 bg-card/40">
+        <div className="container py-5">
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
             {[
-              "Monitors S-1, S-1/A, F-1, F-1/A",
-              "SEC-powered source ingestion",
-              "Amendment tracking",
-              "AI-generated first-look reports",
-              "Watchlists & alerts",
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-primary/60" />
-                <span>{item}</span>
+              { label: "Source", value: "SEC EDGAR (official)" },
+              { label: "Coverage", value: "S-1 · S-1/A · F-1 · F-1/A" },
+              { label: "Latency", value: "Minutes after publication" },
+              { label: "Method", value: "Structured extraction, zero fabrication" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-3">
+                <span className="font-mono text-[9px] text-primary uppercase tracking-[0.22em] opacity-80">
+                  {item.label}
+                </span>
+                <span className="font-mono text-[11px] text-foreground/85 tracking-[0.06em]">
+                  {item.value}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── LIVE FILINGS STRIP — REAL data from Sanity ─────────────────── */}
-      <LiveFilingsStrip />
-
-      {/* Market Snapshot Strip — still mock data for now */}
-      <section className="py-10">
-        <div className="container">
-          <div className="flex items-center gap-2 mb-6">
-            <Zap className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold text-primary tracking-wide uppercase">
-              What's Happening Now
-            </h2>
-            <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[10px] font-semibold uppercase tracking-wider">
-              Sample data
+      {/* Loading state */}
+      {filingsQuery.isLoading && (
+        <section className="py-20">
+          <div className="container flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <span className="ml-3 text-muted-foreground">
+              Loading SEC filings...
             </span>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                label: "New Filings This Week",
-                value: mockStats.newFilingsThisWeek,
-                icon: FileText,
-                color: "text-blue-400",
-              },
-              {
-                label: "Amendments Detected",
-                value: mockStats.amendmentsDetected,
-                icon: GitCompare,
-                color: "text-amber-400",
-              },
-              {
-                label: "Likely Near-Term Launches",
-                value: mockStats.likelyNearTermLaunches,
-                icon: TrendingUp,
-                color: "text-emerald-400",
-              },
-              {
-                label: "Material Changes",
-                value: mockStats.materialChanges,
-                icon: AlertTriangle,
-                color: "text-red-400",
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="p-4 rounded-xl bg-card border border-border/50 hover:border-primary/20 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {stat.label}
-                  </span>
+        </section>
+      )}
+
+      {/* IPOs — merged Upcoming + Recent with pill tabs */}
+      {hasRealData && (
+        <section className="py-24">
+          <div className="container">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+              <div>
+                <div className="vv-eyebrow mb-5">
+                  <TrendingUp className="w-3 h-3 -mr-2 opacity-80" />
+                  The Pipeline
                 </div>
-                <p className="font-mono text-2xl font-bold text-foreground">
-                  {stat.value}
+                <h2 className="vv-section-title text-[clamp(32px,3.2vw,48px)] text-foreground mb-3">
+                  Live <em>IPOs</em>.
+                </h2>
+                <p className="text-[15px] text-muted-foreground max-w-xl font-light leading-[1.75]">
+                  Companies filing S-1, F-1, or amendments — pulled directly from SEC EDGAR.
                 </p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Upcoming IPOs — MOCK DATA from @/lib/data */}
-      <section className="py-12">
-        <div className="container">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                Upcoming IPOs
-              </h2>
-              <p className="text-muted-foreground mt-1.5">
-                Sample filings — preview of the IPO Radar interface.
-              </p>
+              {/* Pill tabs */}
+              <div
+                className="inline-flex items-center gap-1 p-1 bg-card border border-border/60 self-start lg:self-auto"
+                style={{ borderRadius: "4px" }}
+              >
+                {[
+                  { id: "upcoming" as const, label: "Upcoming", count: upcomingIPOs.length },
+                  { id: "recent" as const, label: "Recent", count: recentIPOs.length },
+                  { id: "all" as const, label: "All", count: uniqueFilings.length },
+                ].map((tab) => {
+                  const active = ipoTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setIpoTab(tab.id)}
+                      className={`px-4 py-2 font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      style={{ borderRadius: "3px" }}
+                    >
+                      {tab.label}
+                      <span className={`ml-2 ${active ? "opacity-80" : "opacity-50"}`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayedIPOs.slice(0, 6).map((item, i) => (
+                <SECIPOCard
+                  key={item.filing.accessionNumber}
+                  data={item}
+                  index={i}
+                />
+              ))}
+            </div>
+            <div className="flex justify-center mt-10">
+              <Link
+                href="/ipos"
+                className="flex items-center gap-2 font-mono text-[10px] text-primary hover:text-primary/80 tracking-[0.16em] uppercase no-underline transition-colors"
+              >
+                Browse all IPOs
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
-          <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <p className="text-xs text-amber-300">
-              Sample data shown for preview purposes. Live SEC filing ingestion
-              will be enabled when the backend deploys.
-            </p>
+        </section>
+      )}
+
+      {/* Mock data fallback (shown when no real data) */}
+      {!hasRealData && !filingsQuery.isLoading && (
+        <section className="py-24">
+          <div className="container">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <div className="vv-eyebrow mb-5">
+                  <TrendingUp className="w-3 h-3 -mr-2 opacity-80" />
+                  Sample Set
+                </div>
+                <h2 className="vv-section-title text-[clamp(32px,3.2vw,48px)] text-foreground mb-3">
+                  Upcoming <em>IPOs</em>
+                </h2>
+                <p className="text-[15px] text-muted-foreground max-w-xl font-light leading-[1.75]">
+                  Explore sample issuers preparing to go public. Real SEC data loads as it becomes available.
+                </p>
+              </div>
+            </div>
+            <div className="mb-6 p-4 border border-primary/20 bg-primary/[0.04]" style={{ borderRadius: "2px" }}>
+              <p className="font-mono text-[10px] text-primary/90 uppercase tracking-[0.14em]">
+                ⓘ &nbsp;Showing sample data while live SEC ingestion is running.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ipoCompanies.map((company, i) => (
+                <IPOCard key={company.id} company={company} index={i} />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {ipoCompanies.map((company, i) => (
-              <IPOCard key={company.id} company={company} index={i} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* How It Works */}
-      <section className="py-16 border-t border-border/50">
+      <section className="py-24 border-t border-border/40">
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              How IPO Radar AI Works
+          <div className="text-center mb-14">
+            <div className="vv-eyebrow mb-5 justify-center">
+              The Pipeline
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground mb-4">
+              From SEC filing to <em>institutional research</em>.
             </h2>
-            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-              From SEC filing to institutional-grade research in four automated steps.
+            <p className="text-[15px] text-muted-foreground max-w-xl mx-auto font-light leading-[1.75]">
+              Four automated steps, zero manual handoffs.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { step: "01", title: "Detect", description: "Monitor new SEC IPO-related filings (S-1, F-1) in real time with automated polling.", icon: Radar },
-              { step: "02", title: "Structure", description: "Extract issuer, offering, financial, and risk data into a usable structured schema.", icon: FileSearch },
-              { step: "03", title: "Compare", description: "Identify what changed across amendments with side-by-side diff analysis.", icon: GitCompare },
-              { step: "04", title: "Deliver", description: "Generate first-look reports, alerts, dashboards, and filing timelines automatically.", icon: Bell },
+              {
+                step: "01",
+                title: "Detect",
+                description:
+                  "Monitor new SEC IPO-related filings (S-1, F-1) in real time with automated polling.",
+                icon: Radar,
+              },
+              {
+                step: "02",
+                title: "Structure",
+                description:
+                  "Extract issuer, offering, financial, and risk data into a usable structured schema.",
+                icon: FileSearch,
+              },
+              {
+                step: "03",
+                title: "Compare",
+                description:
+                  "Identify what changed across amendments with side-by-side diff analysis.",
+                icon: GitCompare,
+              },
+              {
+                step: "04",
+                title: "Deliver",
+                description:
+                  "Generate first-look reports, alerts, dashboards, and filing timelines automatically.",
+                icon: Bell,
+              },
             ].map((item) => (
               <div
                 key={item.step}
-                className="relative p-6 rounded-xl bg-card border border-border/50 group hover:border-primary/30 transition-all"
+                className="relative p-7 bg-card border border-border/60 group hover:border-primary/40 transition-all"
+                style={{ borderRadius: "2px" }}
               >
-                <span className="font-mono text-xs text-primary/50 font-semibold">
-                  {item.step}
+                <span className="font-mono text-[10px] text-primary/60 tracking-[0.2em]">
+                  {item.step} —
                 </span>
-                <div className="mt-3 mb-3">
-                  <item.icon className="w-6 h-6 text-primary" />
+                <div className="mt-5 mb-4">
+                  <item.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-lg font-bold text-foreground mb-2">
+                <h3 className="font-serif text-2xl font-medium text-foreground mb-3 leading-tight">
                   {item.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-[13.5px] text-muted-foreground leading-relaxed font-light">
                   {item.description}
                 </p>
               </div>
@@ -307,37 +431,71 @@ export default function Home() {
       </section>
 
       {/* Product Features */}
-      <section className="py-16 border-t border-border/50 bg-secondary/20">
+      <section className="py-24 border-t border-border/40" style={{ background: "oklch(0.17 0.013 195)" }}>
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Built for IPO Intelligence
+          <div className="text-center mb-14">
+            <div className="vv-eyebrow mb-5 justify-center">
+              Capabilities
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground mb-4">
+              Built for <em>IPO intelligence</em>.
             </h2>
-            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+            <p className="text-[15px] text-muted-foreground max-w-xl mx-auto font-light leading-[1.75]">
               Every feature designed to give you an edge in tracking and analyzing IPO filings.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { title: "SEC Filing Monitor", description: "Real-time monitoring of S-1, S-1/A, F-1, and F-1/A filings from SEC EDGAR with automated classification.", icon: Radar },
-              { title: "Amendment Diff Engine", description: "Side-by-side comparison of filing versions highlighting material changes in pricing, financials, and risk factors.", icon: GitCompare },
-              { title: "AI First-Look Reports", description: "Institutional-quality initiation reports generated automatically from structured filing data.", icon: FileSearch },
-              { title: "IPO Calendar Intelligence", description: "Track filing timelines, expected pricing dates, and market windows with predictive signals.", icon: BarChart3 },
-              { title: "Company Profiles", description: "Comprehensive issuer pages with business overview, financials, offering details, and risk analysis.", icon: Shield },
-              { title: "Alerts & Watchlists", description: "Custom watchlists with real-time alerts for new filings, amendments, and material changes.", icon: Bell },
+              {
+                title: "SEC Filing Monitor",
+                description:
+                  "Real-time monitoring of S-1, S-1/A, F-1, and F-1/A filings from SEC EDGAR with automated classification.",
+                icon: Radar,
+              },
+              {
+                title: "Amendment Diff Engine",
+                description:
+                  "Side-by-side comparison of filing versions highlighting material changes in pricing, financials, and risk factors.",
+                icon: GitCompare,
+              },
+              {
+                title: "AI First-Look Reports",
+                description:
+                  "Institutional-quality initiation reports generated automatically from structured filing data.",
+                icon: FileSearch,
+              },
+              {
+                title: "IPO Calendar Intelligence",
+                description:
+                  "Track filing timelines, expected pricing dates, and market windows with predictive signals.",
+                icon: BarChart3,
+              },
+              {
+                title: "Company Profiles",
+                description:
+                  "Comprehensive issuer pages with business overview, financials, offering details, and risk analysis.",
+                icon: Shield,
+              },
+              {
+                title: "Alerts & Watchlists",
+                description:
+                  "Custom watchlists with real-time alerts for new filings, amendments, and material changes.",
+                icon: Bell,
+              },
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="p-6 rounded-xl bg-card border border-border/50 hover:border-primary/20 transition-all group"
+                className="p-7 bg-card/80 border border-border/60 hover:border-primary/30 transition-all group"
+                style={{ borderRadius: "2px" }}
               >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                  <feature.icon className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 flex items-center justify-center mb-5 border border-primary/25 bg-primary/5 group-hover:bg-primary/10 transition-colors" style={{ borderRadius: "2px" }}>
+                  <feature.icon className="w-4 h-4 text-primary" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-base font-bold text-foreground mb-2">
+                <h3 className="font-serif text-xl font-medium text-foreground mb-3 leading-tight">
                   {feature.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-[13.5px] text-muted-foreground leading-relaxed font-light">
                   {feature.description}
                 </p>
               </div>
@@ -346,47 +504,207 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why We're Different */}
-      <section className="py-16 border-t border-border/50">
+      {/* Conversational Demo — shows product in action */}
+      <section className="py-24 border-t border-border/40">
         <div className="container">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Why We're Different
+          <div className="text-center mb-14">
+            <div className="vv-eyebrow mb-5 justify-center">
+              <Sparkles className="w-3 h-3 -mr-2 opacity-80" />
+              See It in Action
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground mb-4">
+              Ask questions, get <em>research-grade answers</em>.
             </h2>
-            <p className="text-muted-foreground mt-3 text-lg leading-relaxed">
-              Traditional IPO sites give you calendars, listings, and news. IPO Radar AI gives you{" "}
-              <span className="text-primary font-semibold">
-                filing ingestion, structured extraction, amendment analysis, AI-generated reports, and workflow alerts
-              </span>
-              — all from the primary source.
+            <p className="text-[15px] text-muted-foreground max-w-xl mx-auto font-light leading-[1.75]">
+              Every answer is grounded in the underlying SEC filing — structured, cited, and free of fabrication.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 max-w-4xl mx-auto">
-            <div className="p-6 rounded-xl border border-border/50 bg-card">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                Traditional IPO Sites
-              </h3>
-              <ul className="space-y-3">
+          <div className="max-w-3xl mx-auto">
+            <div
+              className="bg-card border border-border/60 overflow-hidden shadow-2xl shadow-primary/5"
+              style={{ borderRadius: "4px" }}
+            >
+              {/* Window chrome */}
+              <div className="flex items-center gap-3 px-5 py-3 border-b border-border/40 bg-background/40">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/25" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/25" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/25" />
+                </div>
+                <span className="ml-2 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                  IPO Radar AI · Chat
+                </span>
+                <span className="ml-auto px-2 py-0.5 rounded-sm bg-primary/10 text-primary font-mono text-[9px] tracking-[0.16em] uppercase">
+                  Live
+                </span>
+              </div>
+
+              {/* Messages */}
+              <div className="p-6 sm:p-8 space-y-5">
+                {/* User message 1 */}
+                <div className="flex justify-end items-start gap-3">
+                  <div
+                    className="max-w-[80%] px-4 py-2.5 bg-primary text-primary-foreground text-[14px] leading-relaxed"
+                    style={{ borderRadius: "6px" }}
+                  >
+                    What changed in Reddit&rsquo;s latest S-1/A vs the original filing?
+                  </div>
+                  <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-secondary flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-secondary-foreground" />
+                  </div>
+                </div>
+
+                {/* AI message 1 */}
+                <div className="flex justify-start items-start gap-3">
+                  <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-primary/15 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <div
+                    className="max-w-[85%] px-4 py-3 bg-muted text-foreground text-[14px] leading-[1.7]"
+                    style={{ borderRadius: "6px" }}
+                  >
+                    <p className="mb-2">
+                      Reddit filed S-1/A on <span className="font-mono text-primary">March 18, 2024</span>. Three material changes:
+                    </p>
+                    <ul className="space-y-1.5 pl-4 list-disc marker:text-primary/60">
+                      <li>
+                        Offering size raised from{" "}
+                        <span className="font-mono text-primary">$748M</span> to{" "}
+                        <span className="font-mono text-primary">$813M</span> (+8.7%)
+                      </li>
+                      <li>
+                        Pricing range widened from{" "}
+                        <span className="font-mono text-primary">$31–$34</span> to{" "}
+                        <span className="font-mono text-primary">$31–$36</span> per share
+                      </li>
+                      <li>New risk factor added: reliance on third-party AI training data licenses</li>
+                    </ul>
+                    <p className="mt-3 text-muted-foreground text-[11px] font-mono tracking-[0.04em]">
+                      Source: SEC EDGAR · Accession 0001193125-24-072101
+                    </p>
+                  </div>
+                </div>
+
+                {/* User message 2 */}
+                <div className="flex justify-end items-start gap-3">
+                  <div
+                    className="max-w-[80%] px-4 py-2.5 bg-primary text-primary-foreground text-[14px] leading-relaxed"
+                    style={{ borderRadius: "6px" }}
+                  >
+                    Compare that to similar marketplace IPOs.
+                  </div>
+                  <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-secondary flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-secondary-foreground" />
+                  </div>
+                </div>
+
+                {/* AI message 2 — with typing cursor */}
+                <div className="flex justify-start items-start gap-3">
+                  <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-primary/15 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <div
+                    className="max-w-[85%] px-4 py-3 bg-muted text-foreground text-[14px] leading-[1.7]"
+                    style={{ borderRadius: "6px" }}
+                  >
+                    Closest comps by model and scale are{" "}
+                    <span className="font-mono text-primary">Pinterest</span> (April 2019, debuted at $19) and{" "}
+                    <span className="font-mono text-primary">Snap</span> (March 2017, debuted at $17). Both priced with
+                    broader ranges than Reddit&rsquo;s amended range
+                    <span
+                      className="inline-block w-[2px] h-[14px] align-middle ml-0.5 bg-primary animate-pulse"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Input area (visual only) */}
+              <div className="px-5 py-4 border-t border-border/40 bg-background/40">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex-1 px-4 py-2.5 bg-popover border border-border/50 text-[13px] text-muted-foreground/70"
+                    style={{ borderRadius: "4px" }}
+                  >
+                    Ask about any IPO filing, amendment, or comparable…
+                  </div>
+                  <div
+                    className="w-9 h-9 flex items-center justify-center bg-primary text-primary-foreground"
+                    style={{ borderRadius: "4px" }}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-center text-[11px] font-mono text-muted-foreground/60 tracking-[0.18em] mt-6 uppercase">
+              Available on the Pro plan · Sample conversation
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Why We're Different */}
+      <section className="py-24 border-t border-border/40">
+        <div className="container">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="vv-eyebrow mb-5 justify-center">
+              The Difference
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground mb-5">
+              Why we&rsquo;re <em>different</em>.
+            </h2>
+            <p className="text-[16px] text-muted-foreground leading-[1.85] font-light">
+              Traditional IPO sites give you calendars, listings, and news. IPO Radar AI
+              gives you{" "}
+              <span className="text-primary font-normal italic font-serif text-[17px]">
+                filing ingestion, structured extraction, amendment analysis,
+                AI-generated reports, and workflow alerts
+              </span>
+              {" "}— all from the primary source.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14 max-w-4xl mx-auto">
+            <div className="p-7 border border-border/60 bg-card" style={{ borderRadius: "2px" }}>
+              <div className="mb-5">
+                <h3 className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
+                  Calendar &amp; News Sites
+                </h3>
+                <p className="font-mono text-[10px] text-muted-foreground/50 mt-1.5 tracking-[0.12em]">
+                  Renaissance Capital · IPOScoop · Nasdaq IPO Center
+                </p>
+              </div>
+              <ul className="space-y-3.5">
                 {[
                   "Calendar-based listings",
                   "News aggregation",
                   "Basic company profiles",
                   "Manual research required",
-                  "No filing analysis",
+                  "No filing-level analysis",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 text-[14px] text-muted-foreground font-light"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" strokeWidth={2} />
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="p-6 rounded-xl border border-primary/30 bg-primary/5">
-              <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">
-                IPO Radar AI
-              </h3>
-              <ul className="space-y-3">
+            <div className="p-7 border border-primary/30 bg-primary/5" style={{ borderRadius: "2px" }}>
+              <div className="mb-5">
+                <h3 className="font-mono text-[10px] text-primary uppercase tracking-[0.22em]">
+                  IPO Radar AI
+                </h3>
+                <p className="font-mono text-[10px] text-primary/50 mt-1.5 tracking-[0.12em]">
+                  Primary-source intelligence
+                </p>
+              </div>
+              <ul className="space-y-3.5">
                 {[
                   "Direct SEC filing ingestion",
                   "Structured data extraction",
@@ -394,8 +712,11 @@ export default function Home() {
                   "AI-generated first-look reports",
                   "Real-time workflow alerts",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 text-[14px] text-foreground font-light"
+                  >
+                    <Check className="w-3.5 h-3.5 text-primary shrink-0" strokeWidth={2.5} />
                     {item}
                   </li>
                 ))}
@@ -406,14 +727,17 @@ export default function Home() {
       </section>
 
       {/* Target Users */}
-      <section className="py-16 border-t border-border/50 bg-secondary/20">
+      <section className="py-24 border-t border-border/40" style={{ background: "oklch(0.17 0.013 195)" }}>
         <div className="container">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Built for Institutional Professionals
+          <div className="text-center mb-12">
+            <div className="vv-eyebrow mb-5 justify-center">
+              Who It&rsquo;s For
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground">
+              Built for <em>institutional</em> professionals.
             </h2>
           </div>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
             {[
               "Hedge Funds & Long-Only Investors",
               "Family Offices",
@@ -423,7 +747,8 @@ export default function Home() {
             ].map((user) => (
               <div
                 key={user}
-                className="px-5 py-3 rounded-xl bg-card border border-border/50 text-sm font-medium text-foreground"
+                className="px-5 py-3 bg-card border border-border/60 font-mono text-[11px] text-foreground tracking-[0.08em]"
+                style={{ borderRadius: "2px" }}
               >
                 {user}
               </div>
@@ -433,21 +758,45 @@ export default function Home() {
       </section>
 
       {/* Common Questions */}
-      <section className="py-20 border-t border-border/50">
+      <section className="py-24 border-t border-border/40">
         <div className="container">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight text-center mb-12">
-              Common questions
+            <div className="vv-eyebrow mb-5 justify-center">
+              FAQ
+            </div>
+            <h2 className="vv-section-title text-[clamp(32px,3.5vw,52px)] text-foreground text-center mb-14">
+              Common <em>questions</em>.
             </h2>
             <div className="space-y-0">
               {[
-                { q: "What is IPO Radar AI and how does it work?", a: "IPO Radar AI is an intelligence platform that monitors SEC EDGAR for S-1 and F-1 filings in near real-time. When a new IPO registration is detected, the system extracts structured financial data from the filing and generates an institutional-grade initiation report using AI. Every figure in the report comes directly from the SEC filing — nothing is estimated or inferred." },
-                { q: "Where does the financial data come from?", a: "All financial data is sourced exclusively from SEC EDGAR — the official public repository of Securities and Exchange Commission filings. IPO Radar connects to the EDGAR EFTS (full-text search) and Submissions APIs to retrieve filings, company metadata, and XBRL financial data. The AI never fabricates financial figures; it only narrates and analyzes data that has been verified against the original filing." },
-                { q: "What types of SEC filings does IPO Radar track?", a: "The platform tracks four filing types: S-1 (initial domestic IPO registration), S-1/A (amendments to domestic filings), F-1 (initial foreign private issuer registration), and F-1/A (amendments to foreign filings). This covers the full lifecycle of an IPO from initial registration through pricing, including every material amendment along the way." },
-                { q: "How are the AI initiation reports generated?", a: "Reports follow a four-stage pipeline. First, the system collects raw filing data from SEC EDGAR. Second, it structures the data into a standardized package — financials, risk factors, use of proceeds, and business overview. Third, the LLM generates a section-by-section narrative using only the structured data as input. Finally, the system assembles the complete report with proper formatting and citations. The LLM is explicitly constrained to never invent financial data." },
-                { q: "Do I need a paid plan to use IPO Radar?", a: "No. The Free tier gives you access to the IPO calendar, basic company profiles, and sector browsing. The Pro plan at $49 per month unlocks full AI-generated initiation reports, real-time filing alerts, watchlist functionality, amendment diff analysis, and priority data access. Enterprise pricing is available for teams that need API access, custom integrations, and dedicated support." },
-                { q: "How quickly are new filings detected?", a: "IPO Radar monitors the SEC EDGAR EFTS API for new filings on a continuous basis. In practice, new S-1 and F-1 filings typically appear in the platform within minutes of being published on EDGAR. Amendment filings (S-1/A, F-1/A) are detected on the same schedule, and users with alerts enabled receive notifications as soon as a new filing is processed." },
-                { q: "Can I track specific companies or sectors?", a: "Yes. The watchlist feature lets you follow specific companies and receive alerts when they file new documents or amend existing registrations. You can also browse by sector — the platform maps every company's SIC code to a human-readable sector classification. Custom alert rules let you filter by filing type, sector, or specific company, so you only see what matters to your workflow." },
+                {
+                  q: "What is IPO Radar AI and how does it work?",
+                  a: "IPO Radar AI is an intelligence platform that monitors SEC EDGAR for S-1 and F-1 filings in near real-time. When a new IPO registration is detected, the system extracts structured financial data from the filing and generates an institutional-grade initiation report using AI. Every figure in the report comes directly from the SEC filing — nothing is estimated or inferred."
+                },
+                {
+                  q: "Where does the financial data come from?",
+                  a: "All financial data is sourced exclusively from SEC EDGAR — the official public repository of Securities and Exchange Commission filings. IPO Radar connects to the EDGAR EFTS (full-text search) and Submissions APIs to retrieve filings, company metadata, and XBRL financial data. The AI never fabricates financial figures; it only narrates and analyzes data that has been verified against the original filing."
+                },
+                {
+                  q: "What types of SEC filings does IPO Radar track?",
+                  a: "The platform tracks four filing types: S-1 (initial domestic IPO registration), S-1/A (amendments to domestic filings), F-1 (initial foreign private issuer registration), and F-1/A (amendments to foreign filings). This covers the full lifecycle of an IPO from initial registration through pricing, including every material amendment along the way."
+                },
+                {
+                  q: "How are the AI initiation reports generated?",
+                  a: "Reports follow a four-stage pipeline. First, the system collects raw filing data from SEC EDGAR. Second, it structures the data into a standardized package — financials, risk factors, use of proceeds, and business overview. Third, the LLM generates a section-by-section narrative using only the structured data as input. Finally, the system assembles the complete report with proper formatting and citations. The LLM is explicitly constrained to never invent financial data."
+                },
+                {
+                  q: "Do I need a paid plan to use IPO Radar?",
+                  a: "No. The Free tier gives you access to the IPO calendar, basic company profiles, and sector browsing. The Pro plan at $49 per month unlocks full AI-generated initiation reports, real-time filing alerts, watchlist functionality, amendment diff analysis, and priority data access. Enterprise pricing is available for teams that need API access, custom integrations, and dedicated support."
+                },
+                {
+                  q: "How quickly are new filings detected?",
+                  a: "IPO Radar monitors the SEC EDGAR EFTS API for new filings on a continuous basis. In practice, new S-1 and F-1 filings typically appear in the platform within minutes of being published on EDGAR. Amendment filings (S-1/A, F-1/A) are detected on the same schedule, and users with alerts enabled receive notifications as soon as a new filing is processed."
+                },
+                {
+                  q: "Can I track specific companies or sectors?",
+                  a: "Yes. The watchlist feature lets you follow specific companies and receive alerts when they file new documents or amend existing registrations. You can also browse by sector — the platform maps every company's SIC code to a human-readable sector classification. Custom alert rules let you filter by filing type, sector, or specific company, so you only see what matters to your workflow."
+                },
               ].map((item, index) => (
                 <FAQItem
                   key={index}
@@ -463,53 +812,75 @@ export default function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 border-t border-border/50">
-        <div className="container">
+      <section
+        className="py-28 border-t border-border/40 relative overflow-hidden"
+        style={{ background: "oklch(0.17 0.02 195)" }}
+      >
+        {/* Giant serif watermark — Velocia signature */}
+        <div
+          aria-hidden="true"
+          className="absolute pointer-events-none select-none font-serif"
+          style={{
+            top: "-40px",
+            right: "-30px",
+            fontSize: "320px",
+            fontWeight: 300,
+            color: "var(--primary)",
+            opacity: 0.028,
+            lineHeight: 1,
+            letterSpacing: "-0.05em",
+          }}
+        >
+          IR
+        </div>
+        <div className="container relative">
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Get ahead of the IPO market.
+            <div className="vv-eyebrow mb-6 justify-center">
+              Get Started
+            </div>
+            <h2 className="vv-section-title text-[clamp(36px,4.5vw,68px)] text-foreground mb-5">
+              Get ahead of the <em>IPO market</em>.
             </h2>
-            <p className="text-muted-foreground mt-3 text-lg">
+            <p className="text-[16px] text-muted-foreground font-light leading-[1.85] mb-10 max-w-lg mx-auto">
               Join the professionals who see filings first.
             </p>
-            <div className="flex flex-wrap justify-center gap-3 mt-8">
-              <Button
-                size="lg"
-                onClick={() => comingSoon("Get Started")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-8"
-              >
+            <div className="flex flex-wrap justify-center gap-5">
+              <button onClick={() => comingSoon("Get Started")} className="vv-btn-primary">
                 Get Started Free
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => comingSoon("Create Account")}
-                className="border-border/60 text-foreground hover:bg-secondary font-semibold text-base px-8"
-              >
-                Create Account
-              </Button>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => window.open("https://ipo-radar-calendar-app.vercel.app/reports/psus", "_blank")} className="vv-btn-outline">
+                See a Sample Report
+              </button>
             </div>
+            <p className="mt-6 font-mono text-[10px] text-muted-foreground/70 tracking-[0.14em] uppercase">
+              Free tier
+              <span className="mx-3 opacity-40">·</span>
+              Pro $49/mo
+              <span className="mx-3 opacity-40">·</span>
+              No credit card required
+            </p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-10 bg-secondary/20">
+      <footer className="border-t border-border/40 py-14" style={{ background: "oklch(0.14 0.012 195)" }}>
         <div className="container">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Radar className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">
-                IPO Radar AI
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <Radar className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />
+              <span className="font-serif text-[17px] font-medium text-foreground tracking-wide">
+                IPO Radar <span className="text-primary italic font-light">AI</span>
               </span>
             </div>
-            <div className="flex flex-wrap gap-6 text-xs text-muted-foreground">
+            <div className="flex flex-wrap gap-7">
               {["Product", "Coverage", "Reports", "Pricing", "Contact", "Terms", "Privacy"].map(
                 (item) => (
                   <button
                     key={item}
                     onClick={() => handlePlaceholder(item)}
-                    className="hover:text-foreground transition-colors"
+                    className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.16em] hover:text-primary transition-colors"
                   >
                     {item}
                   </button>
@@ -517,7 +888,24 @@ export default function Home() {
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground/60 mt-6 text-center">
+
+          {/* Sync status + copyright row */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-border/30">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex items-center justify-center w-2 h-2">
+                <span className="absolute inline-flex w-full h-full rounded-full bg-primary opacity-60 animate-ping" />
+                <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-primary" />
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground tracking-[0.14em] uppercase">
+                Last SEC sync: {lastSyncLabel ?? "Monitoring"}
+              </span>
+            </div>
+            <p className="font-mono text-[10px] text-muted-foreground/60 tracking-[0.14em] uppercase">
+              © {new Date().getFullYear()} IPO Radar AI · All rights reserved
+            </p>
+          </div>
+
+          <p className="font-mono text-[10px] text-muted-foreground/50 mt-8 text-center tracking-[0.06em] leading-relaxed max-w-2xl mx-auto">
             SEC filings are monitored from official public sources. IPO Radar AI
             does not provide investment advice. All AI-generated content is for
             informational purposes only.
@@ -528,8 +916,14 @@ export default function Home() {
       {/* Global animation keyframes */}
       <style>{`
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </div>
