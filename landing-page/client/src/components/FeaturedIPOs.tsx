@@ -30,50 +30,84 @@ import {
  */
 
 // ─── Industry → cinematic image mapping ──────────────────────────────
-// Reuses the 6 AI-generated images from data.ts. Add more entries as
-// new industries appear. Anything unmapped gets the gradient fallback.
-const INDUSTRY_IMAGES: Array<{ keywords: string[]; image: string }> = [
+// Two matching strategies, tried in order:
+//
+//   1. KEYWORD match on the industry string ("fintech", "biotech", etc.)
+//      — works when discover-filings.js mapped a SIC code to a label.
+//
+//   2. SIC RANGE match — works when the industry is the raw "SIC NNNN"
+//      that EDGAR returns for unmapped SIC codes. Each entry below
+//      lists the SIC ranges that map to its image (inclusive on both
+//      ends, e.g. [[6000,6999]] catches all SIC starting with 6).
+//
+// SIC code reference: https://www.sec.gov/info/edgar/siccodes.htm
+const INDUSTRY_IMAGES: Array<{
+  keywords: string[];
+  sicRanges: Array<[number, number]>;
+  image: string;
+}> = [
   {
     keywords: ["quantum", "compute", "hardware", "semiconductor", "chip"],
+    sicRanges: [[3670, 3679], [3674, 3674]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/quantum_computing_8fd76da9.jpg",
   },
   {
     keywords: ["biotech", "biosciences", "pharma", "pharmaceutical", "medical", "health", "therapy", "clinical"],
+    sicRanges: [[2830, 2839], [3840, 3849], [8000, 8099], [8731, 8731]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/biotech_ed6b4244.jpg",
   },
   {
     keywords: ["fintech", "payment", "bank", "financial", "insurance", "credit"],
+    sicRanges: [[6000, 6999]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/fintech_2e21fd16.jpg",
   },
   {
-    keywords: ["energy", "solar", "renewable", "battery", "utility", "clean"],
+    keywords: ["energy", "solar", "renewable", "battery", "utility", "clean", "oil", "gas"],
+    sicRanges: [[1300, 1399], [2900, 2999], [4900, 4999]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/clean_energy_8a1d5e72.jpg",
   },
   {
-    keywords: ["ai", "artificial intelligence", "machine learning", "software", "cloud", "saas"],
+    keywords: ["ai", "artificial intelligence", "machine learning", "software", "cloud", "saas", "telecom", "communications"],
+    sicRanges: [[7370, 7379], [4812, 4899]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/ai_brain_3f8c4a91.jpg",
   },
   {
-    keywords: ["commerce", "retail", "consumer", "marketplace", "platform"],
+    keywords: ["commerce", "retail", "consumer", "marketplace", "platform", "apparel", "amusement", "media"],
+    sicRanges: [[2300, 2399], [3020, 3029], [5000, 5999], [7800, 7999]],
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663280665947/XKw6FAyQwbdSSsaMMhPauF/ecommerce_5d2e8b47.jpg",
   },
 ];
 
 function imageForFiling(filing: Filing): string | null {
   // 1. Real cinematic DALL-E image from the matching initiationReport,
-  //    joined in by the filingsClient GROQ. This is the ideal — actual
+  //    joined in by the filingsClient GROQ. The ideal — actual
   //    per-company imagery generated when extract-filing was run.
   if (filing.heroImageUrl) return filing.heroImageUrl;
 
-  // 2. Otherwise fall back to an industry-mapped stock photo.
   const industry = (filing.industry || "").toLowerCase();
+
+  // 2. Keyword match on the industry label.
   for (const entry of INDUSTRY_IMAGES) {
     if (entry.keywords.some((kw) => industry.includes(kw))) {
       return entry.image;
     }
   }
 
-  // 3. Last resort: caller renders a teal gradient placeholder.
+  // 3. SIC code range match (catches "SIC 6221" style strings that
+  //    discover-filings.js writes when it can't map the SIC to a label).
+  const sicMatch = industry.match(/sic\s*(\d{3,4})/);
+  if (sicMatch) {
+    const sic = parseInt(sicMatch[1], 10);
+    if (!Number.isNaN(sic)) {
+      for (const entry of INDUSTRY_IMAGES) {
+        if (entry.sicRanges.some(([lo, hi]) => sic >= lo && sic <= hi)) {
+          return entry.image;
+        }
+      }
+    }
+  }
+
+  // 4. Last resort: caller renders a teal gradient placeholder.
   return null;
 }
 
