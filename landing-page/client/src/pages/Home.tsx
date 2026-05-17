@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import IPOCard from "@/components/IPOCard";
 import SECIPOCard from "@/components/SECIPOCard";
+import FeaturedIPOs from "@/components/FeaturedIPOs";
 import { ipoCompanies } from "@/lib/data";
 import {
   Radar,
@@ -247,6 +248,100 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* The Research Gap — bridge from the hero into the IPO grid */}
+      <section className="py-24 border-t border-border/40">
+        <div className="container">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="vv-eyebrow mb-7 justify-center inline-flex">
+              The Research Gap
+            </div>
+            <h2 className="vv-section-title text-[clamp(34px,4vw,64px)] text-foreground leading-[1.08] mb-8">
+              Institutional research used to cost{" "}
+              $50,000 &mdash; <em>or a relationship with Goldman</em>.
+            </h2>
+            <p className="text-[17px] text-muted-foreground max-w-3xl mx-auto font-light leading-[1.85]">
+              For 40 years, bulge-bracket banks have published initiation
+              reports on every IPO filer &mdash; for their hedge fund clients.
+              Everyone else waits for CNBC. IPO Radar AI closes the gap. Same
+              filings.{" "}
+              <em className="text-primary not-italic font-medium">Forty-nine dollars a month.</em>
+            </p>
+          </div>
+
+          {/* Two-column comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14 max-w-5xl mx-auto">
+            {/* Old model */}
+            <div
+              className="bg-card border border-border/50 p-7"
+              style={{ borderRadius: "4px" }}
+            >
+              <div className="font-mono text-[10px] text-muted-foreground tracking-[0.22em] uppercase mb-1">
+                The Old Model
+              </div>
+              <div className="font-mono text-[11px] text-muted-foreground/60 tracking-[0.14em] mb-6">
+                Gatekept research
+              </div>
+              <ul className="space-y-3.5">
+                {[
+                  "Sell-side reports gated at $50K+/yr",
+                  "Bloomberg terminal at $2,000/mo",
+                  "300-page S-1s, unreadable manually",
+                  "News summaries arrive days late",
+                  "Edge belongs to whoever has the terminal",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-3 text-[14px] text-foreground/75 leading-relaxed">
+                    <X className="w-4 h-4 text-muted-foreground/60 shrink-0 mt-0.5" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* IPO Radar */}
+            <div
+              className="border border-primary/35 p-7"
+              style={{
+                borderRadius: "4px",
+                background: "linear-gradient(180deg, rgba(3,200,181,0.06), rgba(3,200,181,0.01))",
+              }}
+            >
+              <div className="font-mono text-[10px] text-primary tracking-[0.22em] uppercase mb-1">
+                With IPO Radar AI
+              </div>
+              <div className="font-mono text-[11px] text-muted-foreground/60 tracking-[0.14em] mb-6">
+                Democratized research
+              </div>
+              <ul className="space-y-3.5">
+                {[
+                  "Institutional-grade report on every filer",
+                  "Primary-source SEC data — same source banks use",
+                  "Amendment diffs in minutes, not hours",
+                  "Cited, structured, fabrication-free",
+                  "Edge democratized — not gatekept",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-3 text-[14px] text-foreground leading-relaxed">
+                    <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer tagline */}
+          <div className="text-center mt-12">
+            <div className="inline-flex items-center gap-4 font-mono text-[10px] text-primary/75 tracking-[0.22em] uppercase">
+              <span>Institutional Methodology</span>
+              <span className="opacity-40">·</span>
+              <span>Retail Accessible</span>
+              <span className="opacity-40">·</span>
+              <span>$49/mo</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Loading state */}
       {filingsQuery.isLoading && (
         <section className="py-20">
@@ -259,107 +354,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* IPOs — merged Upcoming + Recent with pill tabs */}
-      {hasRealData && (
-        <section className="py-24">
-          <div className="container">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
-              <div>
-                <div className="vv-eyebrow mb-5">
-                  <TrendingUp className="w-3 h-3 -mr-2 opacity-80" />
-                  The Pipeline
-                </div>
-                <h2 className="vv-section-title text-[clamp(32px,3.2vw,48px)] text-foreground mb-3">
-                  Live <em>IPOs</em>.
-                </h2>
-                <p className="text-[15px] text-muted-foreground max-w-xl font-light leading-[1.75]">
-                  Companies filing S-1, F-1, or amendments — pulled directly from SEC EDGAR.
-                </p>
-              </div>
-              {/* Pill tabs */}
-              <div
-                className="inline-flex items-center gap-1 p-1 bg-card border border-border/60 self-start lg:self-auto"
-                style={{ borderRadius: "4px" }}
-              >
-                {[
-                  { id: "upcoming" as const, label: "Upcoming", count: upcomingIPOs.length },
-                  { id: "recent" as const, label: "Recent", count: recentIPOs.length },
-                  { id: "all" as const, label: "All", count: uniqueFilings.length },
-                ].map((tab) => {
-                  const active = ipoTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setIpoTab(tab.id)}
-                      className={`px-4 py-2 font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      style={{ borderRadius: "3px" }}
-                    >
-                      {tab.label}
-                      <span className={`ml-2 ${active ? "opacity-80" : "opacity-50"}`}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedIPOs.slice(0, 6).map((item, i) => (
-                <SECIPOCard
-                  key={item.filing.accessionNumber}
-                  data={item}
-                  index={i}
-                />
-              ))}
-            </div>
-            <div className="flex justify-center mt-10">
-              <Link
-                href="/ipos"
-                className="flex items-center gap-2 font-mono text-[10px] text-primary hover:text-primary/80 tracking-[0.16em] uppercase no-underline transition-colors"
-              >
-                Browse all IPOs
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Mock data fallback (shown when no real data) */}
-      {!hasRealData && !filingsQuery.isLoading && (
-        <section className="py-24">
-          <div className="container">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <div className="vv-eyebrow mb-5">
-                  <TrendingUp className="w-3 h-3 -mr-2 opacity-80" />
-                  Sample Set
-                </div>
-                <h2 className="vv-section-title text-[clamp(32px,3.2vw,48px)] text-foreground mb-3">
-                  Upcoming <em>IPOs</em>
-                </h2>
-                <p className="text-[15px] text-muted-foreground max-w-xl font-light leading-[1.75]">
-                  Explore sample issuers preparing to go public. Real SEC data loads as it becomes available.
-                </p>
-              </div>
-            </div>
-            <div className="mb-6 p-4 border border-primary/20 bg-primary/[0.04]" style={{ borderRadius: "2px" }}>
-              <p className="font-mono text-[10px] text-primary/90 uppercase tracking-[0.14em]">
-                ⓘ &nbsp;Showing sample data while live SEC ingestion is running.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ipoCompanies.map((company, i) => (
-                <IPOCard key={company.id} company={company} index={i} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Featured IPOs — live Sanity data, 3 recent + 3 upcoming */}
+      <FeaturedIPOs />
 
       {/* How It Works */}
       <section className="py-24 border-t border-border/40">
