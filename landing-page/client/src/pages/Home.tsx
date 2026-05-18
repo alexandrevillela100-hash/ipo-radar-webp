@@ -204,6 +204,16 @@ export default function Home() {
                 onClick={() => comingSoon("Get Started")}
                 className="vv-btn-primary"
               >
+                <a
+                  href="https://ipo-radar-calendar-app.vercel.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground/80 hover:text-foreground transition-colors no-underline"
+                >
+                  Calendar
+                </a>
+
+                               
                 Get Started Free
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
