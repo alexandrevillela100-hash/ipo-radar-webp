@@ -2,36 +2,33 @@ import { Radar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
-
 // Path A minimal Navbar — no auth state, no search dialog, no user menu.
 // When Path B (backend) ships, restore the original Navbar with useAuth.
 //
-// CHANGED: "Insights" added to the public nav and routes to /insights
-// (the new editorial section backed by Sanity digestArticle docs).
-// Removed "Coverage" placeholder since it didn't go anywhere useful.
-
+// CHANGED:
+//   - "Insights" added to the public nav (routes to /insights, the editorial
+//     section backed by Sanity digestArticle docs).
+//   - "Calendar" added → links out to the calendar-app on Vercel. External
+//     link opens in a new tab so visitors don't leave the marketing site.
+//   - Removed "Coverage" placeholder since it didn't go anywhere useful.
 export default function Navbar() {
   const [location] = useLocation();
-
   const handleSignIn = () => {
     toast("Backend coming soon", {
       description: "Sign-in opens when the auth layer ships. Preview build.",
     });
   };
-
   // Active-state helper — highlights the current section in teal.
   const isActive = (path: string) => {
     if (path === "/") return location === "/";
     return location.startsWith(path);
   };
-
   const linkClass = (path: string) =>
     `transition-colors text-sm ${
       isActive(path)
         ? "text-primary font-semibold"
         : "text-muted-foreground hover:text-foreground"
     }`;
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="container">
@@ -43,12 +40,19 @@ export default function Navbar() {
               IPO Radar <span className="text-primary">AI</span>
             </span>
           </Link>
-
           {/* Nav links */}
           <div className="hidden md:flex items-center gap-7">
             <Link href="/" className={`${linkClass("/")} no-underline`}>
               Home
             </Link>
+            <a
+              href="https://ipo-radar-calendar-app.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors text-sm text-muted-foreground hover:text-foreground no-underline"
+            >
+              Calendar
+            </a>
             <Link href="/insights" className={`${linkClass("/insights")} no-underline`}>
               Insights
             </Link>
@@ -65,7 +69,6 @@ export default function Navbar() {
               Pricing
             </button>
           </div>
-
           {/* CTA */}
           <Button
             size="sm"
