@@ -20,10 +20,10 @@ import {
   Check,
   X,
   Loader2,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation, Link } from "wouter";
-
 /*
  * Design: Dark Terminal Luxe
  * - Deep charcoal base, slate card surfaces
@@ -35,7 +35,6 @@ import { useLocation, Link } from "wouter";
  * - Real SEC data from EDGAR (fetched via tRPC)
  * - Mock data as fallback / showcase examples
  */
-
 /* ─── FAQ Accordion Item ─────────────────────────────────────────────── */
 function FAQItem({
   question,
@@ -91,7 +90,6 @@ function FAQItem({
     </div>
   );
 }
-
 export default function Home() {
   const [, setLocation] = useLocation();
   // Path A: stub for CTA buttons that previously routed to auth-gated pages.
@@ -100,16 +98,12 @@ export default function Home() {
       description: `${label} will be available when the auth layer ships. Preview build.`,
     });
   };
-
-
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-
   const handlePlaceholder = (label: string) => {
     toast("Feature coming soon", {
       description: `${label} will be available in a future release.`,
     });
   };
-
   // ─── Real SEC Data ──────────────────────────────────────────────────────
   // Path A static deploy: no backend, so we stub the filings query.
   // The Home page falls back to the curated mock data in @/lib/data
@@ -119,7 +113,6 @@ export default function Home() {
     isLoading: false,
     refetch: () => {},
   };
-
   // Deduplicate filings: show only the most recent filing per company
   const uniqueFilings = useMemo(() => {
     if (!filingsQuery.data) return [];
@@ -130,22 +123,18 @@ export default function Home() {
       return true;
     });
   }, [filingsQuery.data]);
-
   const hasRealData = uniqueFilings.length > 0;
-
   // Split filings into Upcoming (initial filings) and Recent (amendments)
   const upcomingIPOs = useMemo(() => {
     return uniqueFilings.filter(
       (item) => !item.filing.formType.includes("/A")
     );
   }, [uniqueFilings]);
-
   const recentIPOs = useMemo(() => {
     return uniqueFilings.filter(
       (item) => item.filing.formType.includes("/A")
     );
   }, [uniqueFilings]);
-
   // ─── IPO tab state (Upcoming / Recent / All) ───────────────────────────
   const [ipoTab, setIpoTab] = useState<"upcoming" | "recent" | "all">(
     "upcoming"
@@ -155,7 +144,6 @@ export default function Home() {
     if (ipoTab === "recent") return recentIPOs;
     return uniqueFilings;
   }, [ipoTab, upcomingIPOs, recentIPOs, uniqueFilings]);
-
   // ─── Last SEC sync (derived from most recent filing date) ──────────────
   const lastSyncLabel = useMemo(() => {
     if (!filingsQuery.data || filingsQuery.data.length === 0) return null;
@@ -173,18 +161,15 @@ export default function Home() {
     const days = Math.floor(hours / 24);
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }, [filingsQuery.data]);
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-
       {/* Hero Section — Velocia look: hyper-realistic photo, serif display, DM Mono eyebrow */}
       <section className="relative min-h-[88vh] flex flex-col justify-end pt-28 pb-24 overflow-hidden grain-overlay">
         {/* Hyper-realistic photo background */}
         <div className="vv-hero-bg" aria-hidden="true" />
         {/* Teal grid overlay */}
         <div className="vv-hero-grid" aria-hidden="true" />
-
         <div className="container relative z-10">
           <div className="max-w-3xl">
             <div className="vv-eyebrow mb-7">
@@ -204,16 +189,6 @@ export default function Home() {
                 onClick={() => comingSoon("Get Started")}
                 className="vv-btn-primary"
               >
-                <a
-                  href="https://ipo-radar-calendar-app.vercel.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground/80 hover:text-foreground transition-colors no-underline"
-                >
-                  Calendar
-                </a>
-
-                               
                 Get Started Free
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -223,6 +198,15 @@ export default function Home() {
               >
                 See a Sample Report
               </button>
+              <a
+                href="https://ipo-radar-calendar-app.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="vv-btn-outline no-underline"
+              >
+                <CalendarIcon className="w-3.5 h-3.5" />
+                View Calendar
+              </a>
             </div>
             <p className="mt-8 font-mono text-[11px] text-muted-foreground tracking-[0.14em] uppercase">
               Free tier
@@ -234,7 +218,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Trust/Proof Bar — concrete source proof in DM Mono */}
       <section className="border-y border-border/40 bg-card/40">
         <div className="container py-5">
@@ -257,8 +240,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-
       {/* The Research Gap — bridge from the hero into the IPO grid */}
       <section className="py-24 border-t border-border/40">
         <div className="container">
@@ -278,7 +259,6 @@ export default function Home() {
               <em className="text-primary not-italic font-medium">Forty-nine dollars a month.</em>
             </p>
           </div>
-
           {/* Two-column comparison */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14 max-w-5xl mx-auto">
             {/* Old model */}
@@ -307,7 +287,6 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-
             {/* IPO Radar */}
             <div
               className="border border-primary/35 p-7"
@@ -338,7 +317,6 @@ export default function Home() {
               </ul>
             </div>
           </div>
-
           {/* Footer tagline */}
           <div className="text-center mt-12">
             <div className="inline-flex items-center gap-4 font-mono text-[10px] text-primary/75 tracking-[0.22em] uppercase">
@@ -351,7 +329,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Loading state */}
       {filingsQuery.isLoading && (
         <section className="py-20">
@@ -363,10 +340,8 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Featured IPOs — live Sanity data, 3 recent + 3 upcoming */}
       <FeaturedIPOs />
-
       {/* How It Works */}
       <section className="py-24 border-t border-border/40">
         <div className="container">
@@ -381,7 +356,6 @@ export default function Home() {
               Four automated steps, zero manual handoffs.
             </p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               {
@@ -435,7 +409,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Product Features */}
       <section className="py-24 border-t border-border/40" style={{ background: "oklch(0.17 0.013 195)" }}>
         <div className="container">
@@ -450,7 +423,6 @@ export default function Home() {
               Every feature designed to give you an edge in tracking and analyzing IPO filings.
             </p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
@@ -509,7 +481,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Conversational Demo — shows product in action */}
       <section className="py-24 border-t border-border/40">
         <div className="container">
@@ -525,7 +496,6 @@ export default function Home() {
               Every answer is grounded in the underlying SEC filing — structured, cited, and free of fabrication.
             </p>
           </div>
-
           <div className="max-w-3xl mx-auto">
             <div
               className="bg-card border border-border/60 overflow-hidden shadow-2xl shadow-primary/5"
@@ -545,7 +515,6 @@ export default function Home() {
                   Live
                 </span>
               </div>
-
               {/* Messages */}
               <div className="p-6 sm:p-8 space-y-5">
                 {/* User message 1 */}
@@ -560,7 +529,6 @@ export default function Home() {
                     <User className="w-3.5 h-3.5 text-secondary-foreground" />
                   </div>
                 </div>
-
                 {/* AI message 1 */}
                 <div className="flex justify-start items-start gap-3">
                   <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-primary/15 flex items-center justify-center">
@@ -591,7 +559,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
                 {/* User message 2 */}
                 <div className="flex justify-end items-start gap-3">
                   <div
@@ -604,7 +571,6 @@ export default function Home() {
                     <User className="w-3.5 h-3.5 text-secondary-foreground" />
                   </div>
                 </div>
-
                 {/* AI message 2 — with typing cursor */}
                 <div className="flex justify-start items-start gap-3">
                   <div className="w-8 h-8 shrink-0 mt-1 rounded-full bg-primary/15 flex items-center justify-center">
@@ -625,7 +591,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-
               {/* Input area (visual only) */}
               <div className="px-5 py-4 border-t border-border/40 bg-background/40">
                 <div className="flex items-center gap-3">
@@ -644,14 +609,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
             <p className="text-center text-[11px] font-mono text-muted-foreground/60 tracking-[0.18em] mt-6 uppercase">
               Available on the Pro plan · Sample conversation
             </p>
           </div>
         </div>
       </section>
-
       {/* Why We're Different */}
       <section className="py-24 border-t border-border/40">
         <div className="container">
@@ -672,7 +635,6 @@ export default function Home() {
               {" "}— all from the primary source.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14 max-w-4xl mx-auto">
             <div className="p-7 border border-border/60 bg-card" style={{ borderRadius: "2px" }}>
               <div className="mb-5">
@@ -731,7 +693,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Target Users */}
       <section className="py-24 border-t border-border/40" style={{ background: "oklch(0.17 0.013 195)" }}>
         <div className="container">
@@ -762,7 +723,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Common Questions */}
       <section className="py-24 border-t border-border/40">
         <div className="container">
@@ -816,7 +776,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Final CTA */}
       <section
         className="py-28 border-t border-border/40 relative overflow-hidden"
@@ -858,6 +817,15 @@ export default function Home() {
               <button onClick={() => window.open("https://ipo-radar-calendar-app.vercel.app/reports/psus", "_blank")} className="vv-btn-outline">
                 See a Sample Report
               </button>
+              <a
+                href="https://ipo-radar-calendar-app.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="vv-btn-outline no-underline"
+              >
+                <CalendarIcon className="w-3.5 h-3.5" />
+                View Calendar
+              </a>
             </div>
             <p className="mt-6 font-mono text-[10px] text-muted-foreground/70 tracking-[0.14em] uppercase">
               Free tier
@@ -869,7 +837,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="border-t border-border/40 py-14" style={{ background: "oklch(0.14 0.012 195)" }}>
         <div className="container">
@@ -894,7 +861,6 @@ export default function Home() {
               )}
             </div>
           </div>
-
           {/* Sync status + copyright row */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-border/30">
             <div className="flex items-center gap-2.5">
@@ -910,7 +876,6 @@ export default function Home() {
               © {new Date().getFullYear()} IPO Radar AI · All rights reserved
             </p>
           </div>
-
           <p className="font-mono text-[10px] text-muted-foreground/50 mt-8 text-center tracking-[0.06em] leading-relaxed max-w-2xl mx-auto">
             SEC filings are monitored from official public sources. IPO Radar AI
             does not provide investment advice. All AI-generated content is for
@@ -918,7 +883,6 @@ export default function Home() {
           </p>
         </div>
       </footer>
-
       {/* Global animation keyframes */}
       <style>{`
         @keyframes fadeInUp {
